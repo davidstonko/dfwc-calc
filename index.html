@@ -1,0 +1,413 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>DFWC Wound Healing Prediction Calculator</title>
+<meta name="description" content="Research calculator estimating the probability that a diabetic foot ulcer will heal, from a 7-feature logistic regression developed at the Johns Hopkins Diabetic Foot &amp; Wound Center.">
+<style>
+  :root{
+    --navy:#243772; --ink:#1B2A4A; --band:#1B2A4A; --gold:#FFD96E;
+    --green:#1F6B34; --greenbg:#E4F3E8; --amber:#9C3A15; --amberbg:#FBE7DC;
+    --line:#D8DEE9; --muted:#5A6472; --bg:#F6F7FA; --card:#FFFFFF;
+    --warn:#8A4B00; --warnbg:#FFF4E0;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html{-webkit-text-size-adjust:100%}
+  body{
+    margin:0; background:var(--bg); color:var(--ink);
+    font:16px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+    padding-bottom:env(safe-area-inset-bottom);
+  }
+
+  /* persistent research-use banner */
+  #banner{
+    position:sticky; top:0; z-index:50;
+    background:#8A1C1C; color:#fff; text-align:center;
+    font-size:11px; font-weight:700; letter-spacing:.02em;
+    padding:7px 10px; line-height:1.3; white-space:nowrap;
+    overflow:hidden; text-overflow:ellipsis;
+  }
+
+  header{background:var(--navy); color:#fff; padding:22px 18px 20px}
+  header h1{margin:0 0 6px; font-size:21px; line-height:1.25; color:var(--gold)}
+  header p{margin:0; font-size:13px; color:#CFE0F5; line-height:1.45}
+
+  main{max-width:640px; margin:0 auto; padding:16px 14px 40px}
+  .card{background:var(--card); border:1px solid var(--line); border-radius:12px;
+        padding:16px; margin-bottom:14px}
+  .card h2{margin:0 0 14px; font-size:13px; text-transform:uppercase;
+           letter-spacing:.08em; color:var(--muted)}
+
+  .field{margin-bottom:18px}
+  .field:last-child{margin-bottom:4px}
+  .field label{display:block; font-weight:600; font-size:15px; margin-bottom:2px}
+  .hint{font-size:12.5px; color:var(--muted); margin-bottom:8px; line-height:1.4}
+
+  input[type=number]{
+    width:100%; font-size:17px; padding:11px 12px; border:1.5px solid var(--line);
+    border-radius:9px; background:#fff; color:var(--ink); font-variant-numeric:tabular-nums;
+  }
+  input[type=number]:focus{outline:none; border-color:var(--navy);
+    box-shadow:0 0 0 3px rgba(36,55,114,.13)}
+  input[type=number].bad{border-color:#B03030; background:#FFF6F5}
+
+  .seg{display:flex; gap:6px; flex-wrap:wrap}
+  .seg button{
+    flex:1 1 0; min-width:52px; padding:11px 6px; font-size:16px; font-weight:600;
+    border:1.5px solid var(--line); border-radius:9px; background:#fff;
+    color:var(--ink); cursor:pointer; font-family:inherit;
+  }
+  .seg button[aria-pressed="true"]{background:var(--navy); border-color:var(--navy); color:#fff}
+
+  /* result: pins under the banner so the number stays visible while you fill fields */
+  #sticky{position:sticky; top:var(--bh,30px); z-index:40; background:var(--bg);
+          padding:10px 0 8px; margin-bottom:6px}
+  #result{border-radius:12px; padding:12px 14px 10px;
+          border:1px solid var(--line); background:#fff;
+          box-shadow:0 2px 10px rgba(27,42,74,.07)}
+  #result.heal{background:var(--greenbg); border-color:#B6DCC2}
+  #result.nheal{background:var(--amberbg); border-color:#EFC6B2}
+  #result.idle{background:#fff}
+  .rrow{display:flex; align-items:center; gap:14px}
+  #pct{font-size:40px; font-weight:800; line-height:1; letter-spacing:-.02em;
+       font-variant-numeric:tabular-nums; flex:0 0 auto}
+  #result.heal #pct{color:var(--green)} #result.nheal #pct{color:var(--amber)}
+  #result.idle #pct{color:var(--muted); font-size:15px; font-weight:600; line-height:1.35}
+  .rmeta{flex:1 1 auto; min-width:0}
+  #plabel{font-size:12px; color:var(--muted); line-height:1.35}
+  #cls{display:inline-block; margin-top:5px; padding:4px 11px; border-radius:999px;
+       font-size:11.5px; font-weight:700; letter-spacing:.05em}
+  #result.heal #cls{background:#C6EFCE; color:var(--green)}
+  #result.nheal #cls{background:#FBD3C0; color:var(--amber)}
+  #result.idle #cls{display:none}
+  #result.idle .rmeta{display:none}
+
+  #bar{height:7px; background:#E6E9F0; border-radius:999px; margin:11px 0 4px;
+       position:relative}
+  #fill{height:100%; border-radius:999px; width:0; transition:width .25s ease}
+  #result.heal #fill{background:var(--green)} #result.nheal #fill{background:var(--amber)}
+  #cut{position:absolute; top:-3px; bottom:-3px; left:71%; width:2px;
+       background:var(--ink); opacity:.55}
+  #barlab{font-size:10.5px; color:var(--muted); text-align:right}
+
+  #warn{background:var(--warnbg); border:1px solid #F0DDB8; color:var(--warn);
+        border-radius:10px; padding:10px 12px; font-size:12.5px; font-weight:600;
+        line-height:1.45; margin-top:8px; display:none}
+
+  details{border-top:1px solid var(--line); padding-top:12px; margin-top:4px}
+  details+details{margin-top:10px}
+  summary{cursor:pointer; font-weight:600; font-size:14.5px; color:var(--navy)}
+  details p, details li{font-size:13.5px; color:#3C4552; line-height:1.55}
+  details table{width:100%; border-collapse:collapse; font-size:13px; margin-top:8px}
+  details th,details td{text-align:left; padding:6px 4px; border-bottom:1px solid var(--line)}
+  details th{color:var(--muted); font-weight:600}
+  details td:nth-child(2),details td:nth-child(3){text-align:right;
+      font-variant-numeric:tabular-nums; white-space:nowrap}
+  code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace; font-size:12px;
+       background:#F0F2F7; padding:1px 4px; border-radius:4px; word-break:break-word}
+
+  .dl{display:block; text-align:center; background:var(--navy); color:#fff;
+      text-decoration:none; font-weight:700; font-size:15px; padding:14px;
+      border-radius:10px}
+  .dl span{display:block; font-weight:400; font-size:12.5px; color:#CFE0F5; margin-top:3px}
+
+  footer{max-width:640px; margin:0 auto; padding:4px 16px 34px;
+         font-size:12px; color:var(--muted); line-height:1.6}
+  footer strong{color:var(--ink)}
+</style>
+</head>
+<body>
+
+<div id="banner">RESEARCH TOOL &mdash; NOT FOR CLINICAL DECISION-MAKING</div>
+
+<header>
+  <h1>Wound Healing Prediction Calculator</h1>
+  <p>Probability that a diabetic foot ulcer will heal.<br>
+     Johns Hopkins Diabetic Foot &amp; Wound Center &middot; Eastern Vascular Society 2026</p>
+</header>
+
+<main>
+  <div id="sticky">
+    <div id="result" class="idle" aria-live="polite">
+      <div class="rrow">
+        <div id="pct">Fill in all seven fields below</div>
+        <div class="rmeta">
+          <div id="plabel"></div>
+          <span id="cls"></span>
+        </div>
+      </div>
+      <div id="bar"><div id="fill"></div><div id="cut" title="71% cut-point"></div></div>
+      <div id="barlab">line marks the 71% cut-point</div>
+    </div>
+    <div id="warn" role="status"></div>
+  </div>
+
+  <div class="card">
+    <h2>Wound and patient details</h2>
+
+    <div class="field">
+      <label for="wnum">Wound number for this patient</label>
+      <div class="hint">Is this their 1st wound, 2nd, 3rd&hellip;?</div>
+      <input type="number" id="wnum" inputmode="numeric" min="1" max="25" step="1" placeholder="e.g. 1">
+    </div>
+
+    <div class="field">
+      <label for="wtot">Total wounds this patient has</label>
+      <div class="hint">Should be at least the wound number above.</div>
+      <input type="number" id="wtot" inputmode="numeric" min="1" max="25" step="1" placeholder="e.g. 3">
+    </div>
+
+    <div class="field">
+      <label id="lab-w">WIfI wound score (W)</label>
+      <div class="hint">0 = none, 1 = mild, 2 = moderate, 3 = severe.</div>
+      <div class="seg" id="seg-w" role="group" aria-labelledby="lab-w"></div>
+    </div>
+
+    <div class="field">
+      <label id="lab-toe">Is the wound on a toe?</label>
+      <div class="hint">&nbsp;</div>
+      <div class="seg" id="seg-toe" role="group" aria-labelledby="lab-toe"></div>
+    </div>
+
+    <div class="field">
+      <label for="depth">Wound depth (cm)</label>
+      <div class="hint">99% of wounds in the development cohort were 3 cm or less.</div>
+      <input type="number" id="depth" inputmode="decimal" min="0" max="10" step="0.1" placeholder="e.g. 0.5">
+    </div>
+
+    <div class="field">
+      <label id="lab-ut">University of Texas stage</label>
+      <div class="hint">UT wound classification stage.</div>
+      <div class="seg" id="seg-ut" role="group" aria-labelledby="lab-ut"></div>
+    </div>
+
+    <div class="field">
+      <label id="lab-asa">On aspirin?</label>
+      <div class="hint">&nbsp;</div>
+      <div class="seg" id="seg-asa" role="group" aria-labelledby="lab-asa"></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>About this model</h2>
+
+    <details>
+      <summary>What the seven predictors do</summary>
+      <table>
+        <tr><th>Predictor</th><th>Odds ratio</th><th>p</th></tr>
+        <tr><td>Toe location (vs. other)</td><td>1.98 (1.28&ndash;3.08)</td><td>0.002</td></tr>
+        <tr><td>Wound depth (per cm)</td><td>1.69 (1.26&ndash;2.27)</td><td>&lt;0.001</td></tr>
+        <tr><td>Total wounds (per 1)</td><td>1.66 (1.44&ndash;1.91)</td><td>&lt;0.001</td></tr>
+        <tr><td>Aspirin (vs. none)</td><td>1.51 (1.05&ndash;2.17)</td><td>0.027</td></tr>
+        <tr><td>UT stage (per 1)</td><td>0.73 (0.58&ndash;0.92)</td><td>0.008</td></tr>
+        <tr><td>W score (per 1)</td><td>0.58 (0.43&ndash;0.78)</td><td>&lt;0.001</td></tr>
+        <tr><td>Wound number (per 1)</td><td>0.57 (0.49&ndash;0.66)</td><td>&lt;0.001</td></tr>
+      </table>
+      <p>Odds ratios are on the native scale: per 1 unit for counts, scores and depth in
+      centimetres, and presence vs. absence for toe location and aspirin. Wound number and
+      total wounds are strongly correlated and pull in opposite directions, so neither
+      coefficient means much on its own.</p>
+    </details>
+
+    <details>
+      <summary>How well it performs</summary>
+      <p>Developed on 1,255 diabetic foot ulcers from 422 patients treated between 2012 and
+      2025, split 70/30 by patient. On the 351 held-out wounds: <strong>AUC 0.684</strong>
+      (95% CI 0.61&ndash;0.76), which beats WIfI stage alone by 0.121 (95% CI
+      0.030&ndash;0.207, p=0.004). At the 71% cut-point, sensitivity 0.81 and specificity
+      0.51. Calibration slope 0.72, Hosmer&ndash;Lemeshow p=0.099, Brier 0.144.</p>
+      <p>An AUC of 0.68 is modest. This model separates healing from non-healing wounds
+      better than staging does, but it is not a substitute for clinical judgement.</p>
+    </details>
+
+    <details>
+      <summary>The equation</summary>
+      <p>A logistic regression with a Platt recalibration learned from out-of-fold
+      predictions on the training set only:</p>
+      <p><code>p = 1 / (1 + exp(-(0.116206 + 0.899692 &times; L)))</code></p>
+      <p><code>L = 1.604873 &minus; 0.565857&middot;WoundNum + 0.505326&middot;TotalWounds
+      &minus; 0.542333&middot;W + 0.685499&middot;Toe + 0.523756&middot;Depth
+      &minus; 0.315045&middot;UTStage + 0.410967&middot;Aspirin</code></p>
+      <p>The 71% cut-point is the Youden-optimal operating point on the held-out set, not a
+      50/50 line, so a wound between 50% and 71% still classifies as not healed.</p>
+    </details>
+  </div>
+
+  <div class="card" style="padding:12px">
+    <a class="dl" href="DFWC_HP_ClinicalCalculator_v5.xlsx" download>
+      Download the Excel version
+      <span>Same model, with the coefficients, full performance table and a validation sheet</span>
+    </a>
+  </div>
+</main>
+
+<footer>
+  <p><strong>Stonko DP, Hicks CW, Sherman RL, Abularrage CJ.</strong>
+  Data visualization and machine-learning prediction of wound healing in diabetic foot
+  ulcers: a single-center analysis using the WIfI classification system.
+  Presented at the Eastern Vascular Society 40th Annual Meeting, Washington DC,
+  September 2026.</p>
+  <p>Approved by the Johns Hopkins Medicine IRB, IR00076176. Developed and internally
+  validated at a single center; not externally validated. This tool is provided for
+  research and educational purposes and must not be used to guide the care of an
+  individual patient. It runs entirely in your browser and sends nothing anywhere.</p>
+</footer>
+
+<script id="model-core">
+/* ---------------------------------------------------------------------------
+   Locked 7-feature model, DFWC_HP_finalModel_7f.mat (14 Jul 2026).
+   Verified against MATLAB on all 351 held-out wounds: max |diff| = 4.4e-16.
+   --------------------------------------------------------------------------- */
+var MODEL = {
+  intercept: 1.604872774991,
+  coef: {
+    woundNumber:  -0.565857146005,
+    totalWounds:   0.505325944016,
+    wScore:       -0.542333303148,
+    toe:           0.685499491660,
+    depth:         0.523755741515,
+    utStage:      -0.315045134352,
+    aspirin:       0.410967046600
+  },
+  plattB0: 0.116206301634,
+  plattB1: 0.899691834507,
+  threshold: 0.71
+};
+
+function computeProbability(v){
+  var c = MODEL.coef;
+  var L = MODEL.intercept
+        + c.woundNumber * v.woundNumber
+        + c.totalWounds * v.totalWounds
+        + c.wScore      * v.wScore
+        + c.toe         * v.toe
+        + c.depth       * v.depth
+        + c.utStage     * v.utStage
+        + c.aspirin     * v.aspirin;
+  var z = MODEL.plattB0 + MODEL.plattB1 * L;
+  return 1 / (1 + Math.exp(-z));
+}
+
+if (typeof module !== "undefined" && module.exports) {
+  module.exports = { MODEL: MODEL, computeProbability: computeProbability };
+}
+</script>
+
+<script>
+(function(){
+  "use strict";
+
+  var SEGS = {
+    "seg-w":   {values:[0,1,2,3],       labels:["0","1","2","3"],   key:"wScore"},
+    "seg-toe": {values:[1,0],           labels:["Yes","No"],        key:"toe"},
+    "seg-ut":  {values:[0,1,2,3,4],     labels:["0","1","2","3","4"], key:"utStage"},
+    "seg-asa": {values:[1,0],           labels:["Yes","No"],        key:"aspirin"}
+  };
+  var state = {woundNumber:null, totalWounds:null, wScore:null,
+               toe:null, depth:null, utStage:null, aspirin:null};
+
+  Object.keys(SEGS).forEach(function(id){
+    var cfg = SEGS[id], host = document.getElementById(id);
+    cfg.values.forEach(function(val, i){
+      var b = document.createElement("button");
+      b.type = "button";
+      b.textContent = cfg.labels[i];
+      b.setAttribute("aria-pressed", "false");
+      b.addEventListener("click", function(){
+        state[cfg.key] = val;
+        Array.prototype.forEach.call(host.children, function(other){
+          other.setAttribute("aria-pressed", other === b ? "true" : "false");
+        });
+        render();
+      });
+      host.appendChild(b);
+    });
+  });
+
+  var NUMS = [
+    {id:"wnum",  key:"woundNumber", min:1, max:25, integer:true},
+    {id:"wtot",  key:"totalWounds", min:1, max:25, integer:true},
+    {id:"depth", key:"depth",       min:0, max:10, integer:false}
+  ];
+  NUMS.forEach(function(f){
+    var el = document.getElementById(f.id);
+    el.addEventListener("input", function(){
+      var raw = el.value.trim();
+      if (raw === "") { state[f.key] = null; el.classList.remove("bad"); render(); return; }
+      var n = Number(raw);
+      var ok = isFinite(n) && n >= f.min && n <= f.max && (!f.integer || n === Math.round(n));
+      el.classList.toggle("bad", !ok);
+      state[f.key] = ok ? n : null;
+      render();
+    });
+  });
+
+  var elResult = document.getElementById("result"),
+      elPct    = document.getElementById("pct"),
+      elLabel  = document.getElementById("plabel"),
+      elCls    = document.getElementById("cls"),
+      elFill   = document.getElementById("fill"),
+      elWarn   = document.getElementById("warn");
+
+  function ready(){
+    return Object.keys(state).every(function(k){ return state[k] !== null; });
+  }
+
+  function warnings(){
+    var w = [];
+    if (state.woundNumber !== null && state.totalWounds !== null &&
+        state.woundNumber > state.totalWounds) {
+      w.push("Wound number (" + state.woundNumber + ") is larger than this patient's total wounds (" +
+             state.totalWounds + ").");
+    }
+    if (state.depth !== null && state.depth > 3) {
+      w.push("A depth of " + state.depth + " cm is beyond 99% of the development cohort.");
+    }
+    if ((state.woundNumber !== null && state.woundNumber > 13) ||
+        (state.totalWounds !== null && state.totalWounds > 21)) {
+      w.push("Wound counts this high are rare in the development cohort.");
+    }
+    return w;
+  }
+
+  function render(){
+    var w = warnings();
+    if (w.length) {
+      elWarn.textContent = w.join(" ") + " Treat the estimate with caution.";
+      elWarn.style.display = "block";
+    } else {
+      elWarn.style.display = "none";
+    }
+
+    if (!ready()) {
+      elResult.className = "idle";
+      elPct.textContent = "Fill in all seven fields below";
+      elLabel.textContent = "";
+      elCls.textContent = "";
+      elFill.style.width = "0";
+      return;
+    }
+
+    var p = computeProbability(state);
+    var heals = p >= MODEL.threshold;
+    elResult.className = heals ? "heal" : "nheal";
+    elPct.textContent = (p * 100).toFixed(1) + "%";
+    elLabel.textContent = "predicted probability of healing";
+    elCls.textContent = heals ? "HEALED" : "NOT HEALED";
+    elFill.style.width = (p * 100).toFixed(1) + "%";
+  }
+
+  function syncBannerHeight(){
+    var b = document.getElementById("banner");
+    document.documentElement.style.setProperty("--bh", b.offsetHeight + "px");
+  }
+  window.addEventListener("resize", syncBannerHeight);
+  window.addEventListener("orientationchange", syncBannerHeight);
+  syncBannerHeight();
+
+  render();
+})();
+</script>
+</body>
+</html>
