@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>DFWC Wound Healing Prediction Calculator</title>
-<meta name="description" content="Research calculator estimating the probability that a diabetic foot ulcer will heal, from a 7-feature logistic regression developed at the Johns Hopkins Diabetic Foot &amp; Wound Center.">
+<meta name="description" content="Research calculator estimating the probability that a diabetic foot ulcer heals without major amputation or death, from a 7-feature logistic regression developed at the Johns Hopkins Diabetic Foot &amp; Wound Center.">
 <style>
   :root{
     --navy:#243772; --ink:#1B2A4A; --band:#1B2A4A; --gold:#FFD96E;
@@ -123,7 +123,7 @@
 
 <header>
   <h1>Wound Healing Prediction Calculator</h1>
-  <p>Probability that a diabetic foot ulcer will heal.<br>
+  <p>Probability that a diabetic foot ulcer heals without major amputation or death.<br>
      Johns Hopkins Diabetic Foot &amp; Wound Center &middot; Eastern Vascular Society 2026</p>
 </header>
 
@@ -219,6 +219,14 @@
       0.51. Calibration slope 0.72, Hosmer&ndash;Lemeshow p=0.099, Brier 0.144.</p>
       <p>An AUC of 0.68 is modest. This model separates healing from non-healing wounds
       better than staging does, but it is not a substitute for clinical judgement.</p>
+      <p><strong>What counts as not healed.</strong> The outcome is a composite. A wound
+      counted as not healed either stayed open, required a major amputation, or belonged
+      to a patient who died before it resolved. Of the 245 non-healing wounds the model
+      learned from, 154 stayed open, 48 were amputations and 43 were deaths &mdash; so over
+      a third are not a persistent wound. The number above is therefore the probability of
+      healing <em>and</em> keeping the limb <em>and</em> surviving to heal, which is what
+      can actually be predicted at the bedside: you cannot know in advance which patients
+      to exclude.</p>
     </details>
 
     <details>
@@ -393,7 +401,7 @@ if (typeof module !== "undefined" && module.exports) {
     var heals = p >= MODEL.threshold;
     elResult.className = heals ? "heal" : "nheal";
     elPct.textContent = (p * 100).toFixed(1) + "%";
-    elLabel.textContent = "predicted probability of healing";
+    elLabel.textContent = "predicted probability of healing without amputation or death";
     elCls.textContent = heals ? "HEALED" : "NOT HEALED";
     elFill.style.width = (p * 100).toFixed(1) + "%";
   }
