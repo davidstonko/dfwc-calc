@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>DFWC Wound Healing Prediction Calculator</title>
-<meta name="description" content="Research calculator estimating the probability that a diabetic foot ulcer heals without major amputation or death, from a 7-feature logistic regression developed at the Johns Hopkins Diabetic Foot &amp; Wound Center.">
+<meta name="description" content="Research calculator estimating the probability that a diabetic foot ulcer heals within 180 days, from a four-variable logistic regression developed at the Johns Hopkins Diabetic Foot &amp; Wound Center.">
 <style>
   :root{
     --navy:#243772; --ink:#1B2A4A; --band:#1B2A4A; --gold:#FFD96E;
@@ -44,14 +44,6 @@
   .field label{display:block; font-weight:600; font-size:15px; margin-bottom:2px}
   .hint{font-size:12.5px; color:var(--muted); margin-bottom:8px; line-height:1.4}
 
-  input[type=number]{
-    width:100%; font-size:17px; padding:11px 12px; border:1.5px solid var(--line);
-    border-radius:9px; background:#fff; color:var(--ink); font-variant-numeric:tabular-nums;
-  }
-  input[type=number]:focus{outline:none; border-color:var(--navy);
-    box-shadow:0 0 0 3px rgba(36,55,114,.13)}
-  input[type=number].bad{border-color:#B03030; background:#FFF6F5}
-
   .seg{display:flex; gap:6px; flex-wrap:wrap}
   .seg button{
     flex:1 1 0; min-width:52px; padding:11px 6px; font-size:16px; font-weight:600;
@@ -59,6 +51,8 @@
     color:var(--ink); cursor:pointer; font-family:inherit;
   }
   .seg button[aria-pressed="true"]{background:var(--navy); border-color:var(--navy); color:#fff}
+  .seg button small{display:block; font-weight:400; font-size:11px; opacity:.72;
+    margin-top:2px; line-height:1.2}
 
   /* result: pins under the banner so the number stays visible while you fill fields */
   #sticky{position:sticky; top:var(--bh,30px); z-index:40; background:var(--bg);
@@ -87,13 +81,9 @@
        position:relative}
   #fill{height:100%; border-radius:999px; width:0; transition:width .25s ease}
   #result.heal #fill{background:var(--green)} #result.nheal #fill{background:var(--amber)}
-  #cut{position:absolute; top:-3px; bottom:-3px; left:71%; width:2px;
+  #cut{position:absolute; top:-3px; bottom:-3px; left:59.7%; width:2px;
        background:var(--ink); opacity:.55}
   #barlab{font-size:10.5px; color:var(--muted); text-align:right}
-
-  #warn{background:var(--warnbg); border:1px solid #F0DDB8; color:var(--warn);
-        border-radius:10px; padding:10px 12px; font-size:12.5px; font-weight:600;
-        line-height:1.45; margin-top:8px; display:none}
 
   details{border-top:1px solid var(--line); padding-top:12px; margin-top:4px}
   details+details{margin-top:10px}
@@ -107,10 +97,10 @@
   code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace; font-size:12px;
        background:#F0F2F7; padding:1px 4px; border-radius:4px; word-break:break-word}
 
-  .dl{display:block; text-align:center; background:var(--navy); color:#fff;
-      text-decoration:none; font-weight:700; font-size:15px; padding:14px;
-      border-radius:10px}
-  .dl span{display:block; font-weight:400; font-size:12.5px; color:#CFE0F5; margin-top:3px}
+  .note{background:var(--warnbg); border:1px solid #F0DDB8; color:var(--warn);
+        border-radius:10px; padding:11px 13px; font-size:12.5px; line-height:1.5;
+        margin:0 0 14px}
+  .note strong{color:#6E3B00}
 
   footer{max-width:640px; margin:0 auto; padding:4px 16px 34px;
          font-size:12px; color:var(--muted); line-height:1.6}
@@ -123,7 +113,7 @@
 
 <header>
   <h1>Wound Healing Prediction Calculator</h1>
-  <p>Probability that a diabetic foot ulcer heals without major amputation or death.<br>
+  <p>Probability that a diabetic foot ulcer heals within 180 days.<br>
      Johns Hopkins Diabetic Foot &amp; Wound Center &middot; Eastern Vascular Society 2026</p>
 </header>
 
@@ -131,37 +121,31 @@
   <div id="sticky">
     <div id="result" class="idle" aria-live="polite">
       <div class="rrow">
-        <div id="pct">Fill in all seven fields below</div>
+        <div id="pct">Answer all four questions below</div>
         <div class="rmeta">
           <div id="plabel"></div>
           <span id="cls"></span>
         </div>
       </div>
-      <div id="bar"><div id="fill"></div><div id="cut" title="71% cut-point"></div></div>
-      <div id="barlab">line marks the 71% cut-point</div>
+      <div id="bar"><div id="fill"></div><div id="cut" title="60% cut-point"></div></div>
+      <div id="barlab">line marks the 60% cut-point</div>
     </div>
-    <div id="warn" role="status"></div>
   </div>
 
   <div class="card">
-    <h2>Wound and patient details</h2>
+    <h2>Wound details</h2>
 
     <div class="field">
-      <label for="wnum">Wound number for this patient</label>
-      <div class="hint">Is this their 1st wound, 2nd, 3rd&hellip;?</div>
-      <input type="number" id="wnum" inputmode="numeric" min="1" max="25" step="1" placeholder="e.g. 1">
-    </div>
-
-    <div class="field">
-      <label for="wtot">Total wounds this patient has</label>
-      <div class="hint">Should be at least the wound number above.</div>
-      <input type="number" id="wtot" inputmode="numeric" min="1" max="25" step="1" placeholder="e.g. 3">
-    </div>
-
-    <div class="field">
-      <label id="lab-w">WIfI wound score (W)</label>
-      <div class="hint">0 = none, 1 = mild, 2 = moderate, 3 = severe.</div>
+      <label id="lab-w">WIfI wound grade (W)</label>
+      <div class="hint">0 = none, 1 = small and shallow, 2 = deeper, 3 = extensive.</div>
       <div class="seg" id="seg-w" role="group" aria-labelledby="lab-w"></div>
+    </div>
+
+    <div class="field">
+      <label id="lab-ut">University of Texas stage</label>
+      <div class="hint">The <strong>letter</strong> of the UT score, which grades infection
+        and ischemia. Not the number, which grades depth.</div>
+      <div class="seg" id="seg-ut" role="group" aria-labelledby="lab-ut"></div>
     </div>
 
     <div class="field">
@@ -171,128 +155,138 @@
     </div>
 
     <div class="field">
-      <label for="depth">Wound depth (cm)</label>
-      <div class="hint">99% of wounds in the development cohort were 3 cm or less.</div>
-      <input type="number" id="depth" inputmode="decimal" min="0" max="10" step="0.1" placeholder="e.g. 0.5">
-    </div>
-
-    <div class="field">
-      <label id="lab-ut">University of Texas stage</label>
-      <div class="hint">UT wound classification stage.</div>
-      <div class="seg" id="seg-ut" role="group" aria-labelledby="lab-ut"></div>
-    </div>
-
-    <div class="field">
-      <label id="lab-asa">On aspirin?</label>
-      <div class="hint">&nbsp;</div>
-      <div class="seg" id="seg-asa" role="group" aria-labelledby="lab-asa"></div>
+      <label id="lab-nc">Noncompressible tibial vessels?</label>
+      <div class="hint">Ankle pressures that will not occlude, so no ankle-brachial index
+        can be assigned. The calcification itself carries the signal; the ABI value does not.</div>
+      <div class="seg" id="seg-nc" role="group" aria-labelledby="lab-nc"></div>
     </div>
   </div>
 
   <div class="card">
     <h2>About this model</h2>
 
+    <p class="note"><strong>This page replaced an earlier seven-variable model in August
+    2026.</strong> That version asked how many wounds the patient had in total, which is not
+    knowable at a first visit and moved the estimate by as much as 17 percentage points on
+    its own. It also reported a margin over WIfI stage of 0.121, measured against an outcome
+    with no time horizon. Both are withdrawn. If you used the old page, its numbers do not
+    carry over.</p>
+
     <details>
-      <summary>What the seven predictors do</summary>
+      <summary>What the four predictors do</summary>
       <table>
         <tr><th>Predictor</th><th>Odds ratio</th><th>p</th></tr>
-        <tr><td>Toe location (vs. other)</td><td>1.98 (1.28&ndash;3.08)</td><td>0.002</td></tr>
-        <tr><td>Wound depth (per cm)</td><td>1.69 (1.26&ndash;2.27)</td><td>&lt;0.001</td></tr>
-        <tr><td>Total wounds (per 1)</td><td>1.66 (1.44&ndash;1.91)</td><td>&lt;0.001</td></tr>
-        <tr><td>Aspirin (vs. none)</td><td>1.51 (1.05&ndash;2.17)</td><td>0.027</td></tr>
-        <tr><td>UT stage (per 1)</td><td>0.73 (0.58&ndash;0.92)</td><td>0.008</td></tr>
-        <tr><td>W score (per 1)</td><td>0.58 (0.43&ndash;0.78)</td><td>&lt;0.001</td></tr>
-        <tr><td>Wound number (per 1)</td><td>0.57 (0.49&ndash;0.66)</td><td>&lt;0.001</td></tr>
+        <tr><td>Toe location (vs. other)</td><td>2.21 (1.53&ndash;3.20)</td><td>&lt;0.0001</td></tr>
+        <tr><td>UT stage (per stage)</td><td>0.70 (0.59&ndash;0.82)</td><td>&lt;0.0001</td></tr>
+        <tr><td>WIfI wound grade (per grade)</td><td>0.62 (0.47&ndash;0.80)</td><td>0.0003</td></tr>
+        <tr><td>Noncompressible tibials (vs. not)</td><td>0.58 (0.42&ndash;0.80)</td><td>0.0010</td></tr>
       </table>
-      <p>Odds ratios are on the native scale: per 1 unit for counts, scores and depth in
-      centimetres, and presence vs. absence for toe location and aspirin. Wound number and
-      total wounds are strongly correlated and pull in opposite directions, so neither
-      coefficient means much on its own.</p>
+      <p>Odds ratios are on the native scale: per one grade or stage, and presence vs.
+      absence for toe location and noncompressible tibial vessels. An odds ratio above 1
+      favours healing.</p>
+      <p>Toe wounds heal better than wounds elsewhere on the foot, and that is the largest
+      single effect here. Noncompressible tibial vessels predict healing where the
+      ankle-brachial index does not, which is why the calcification phenotype is asked for
+      and the index value is not.</p>
     </details>
 
     <details>
-      <summary>How well it performs</summary>
-      <p>Developed on 1,255 diabetic foot ulcers from 422 patients treated between 2012 and
-      2025, split 70/30 by patient. On the 351 held-out wounds: <strong>AUC 0.684</strong>
-      (95% CI 0.61&ndash;0.76), which beats WIfI stage alone by 0.121 (95% CI
-      0.030&ndash;0.207, p=0.004). At the 71% cut-point, sensitivity 0.81 and specificity
-      0.51. Calibration slope 0.72, Hosmer&ndash;Lemeshow p=0.099, Brier 0.144.</p>
-      <p>An AUC of 0.68 is modest. This model separates healing from non-healing wounds
-      better than staging does, but it is not a substitute for clinical judgement.</p>
-      <p><strong>What counts as not healed.</strong> The outcome is a composite. A wound
-      counted as not healed either stayed open, required a major amputation, or belonged
-      to a patient who died before it resolved. Of the 245 non-healing wounds the model
-      learned from, 154 stayed open, 48 were amputations and 43 were deaths &mdash; so over
-      a third are not a persistent wound. The number above is therefore the probability of
-      healing <em>and</em> keeping the limb <em>and</em> surviving to heal, which is what
-      can actually be predicted at the bedside: you cannot know in advance which patients
-      to exclude.</p>
+      <summary>How well it performs, and where it does not</summary>
+      <p>Developed on 1,141 diabetic foot ulcers from 387 patients treated between 2012 and
+      2025, split 755/386 by patient. A further 114 wounds were excluded because they had
+      neither a definitive outcome nor 180 days of observation.</p>
+      <p>On the 386 held-out wounds: <strong>AUC 0.684</strong> (95% CI
+      0.625&ndash;0.741). WIfI stage alone reaches 0.625, so the margin is
+      <strong>+0.059</strong> (95% CI 0.012&ndash;0.109, p=0.008). At the 60% cut-point,
+      sensitivity 70% and specificity 61%, positive predictive value 79% and negative
+      predictive value 49%. Calibration slope 0.859, Brier score 0.199.</p>
+      <p><strong>The honest caveat.</strong> Entering the three WIfI component grades
+      directly, with no model at all, reaches 0.682. This four-variable model reaches 0.684.
+      Across fifteen approaches tested, including tuned gradient boosting, random forests
+      and an elastic net over 77 candidate variables, nothing significantly beat the three
+      component grades. Use this as a convenience, not as evidence that modelling adds
+      something.</p>
+      <p><strong>Calibration is imperfect.</strong> The Hosmer&ndash;Lemeshow test is 22.29,
+      p=0.004, and the calibration slope is 0.859, so the extremes are pulled toward the
+      middle: high probabilities here are somewhat optimistic and low ones somewhat
+      pessimistic. Read the number as a rank, not as a precise risk.</p>
+      <p>Developed and internally validated at one center. Not externally validated.</p>
+    </details>
+
+    <details>
+      <summary>What "healed" means here</summary>
+      <p>The outcome is healing <strong>within 180 days</strong> of presentation, and every
+      wound in the analysis was observed for at least that long or reached a definitive
+      outcome before it.</p>
+      <p>This matters more than it sounds. The registry's healing field carries no time
+      horizon, so a wound recorded as open at last contact counts as a failure whether it
+      had been followed for three years or three weeks. Under that definition the median
+      observation was 96.5 days for open wounds against 931 days for healed ones, and the
+      ischemia grade showed no gradient at all (chi-squared 1.64, p=0.65). Anchoring the
+      outcome at 180 days makes the gradient appear: 70.3% healing at I-0 against 41.1% at
+      I-2, chi-squared 38.36, p&lt;0.0001.</p>
+      <p>Of the 403 wounds not healed by 180 days, 271 healed later, 48 came to major
+      amputation, 43 patients died before the wound resolved, and 41 were still open. So
+      "not healed" here means not healed <em>yet</em>, not healed <em>ever</em>.</p>
     </details>
 
     <details>
       <summary>The equation</summary>
       <p>A logistic regression with a Platt recalibration learned from out-of-fold
       predictions on the training set only:</p>
-      <p><code>p = 1 / (1 + exp(-(0.116206 + 0.899692 &times; L)))</code></p>
-      <p><code>L = 1.604873 &minus; 0.565857&middot;WoundNum + 0.505326&middot;TotalWounds
-      &minus; 0.542333&middot;W + 0.685499&middot;Toe + 0.523756&middot;Depth
-      &minus; 0.315045&middot;UTStage + 0.410967&middot;Aspirin</code></p>
-      <p>The 71% cut-point is the Youden-optimal operating point on the held-out set, not a
-      50/50 line, so a wound between 50% and 71% still classifies as not healed.</p>
+      <p><code>L = 1.715091 &minus; 0.481996&middot;W &minus; 0.362137&middot;UTstage
+      + 0.791939&middot;Toe &minus; 0.546142&middot;NC</code></p>
+      <p><code>p = 1 / (1 + exp(-(0.034127 + 0.917520 &times; L)))</code></p>
+      <p>W and UTstage run 0 to 3; Toe and NC are 1 or 0. The 60% cut-point is the
+      Youden-optimal operating point on the held-out set (0.5973 exactly), not a 50/50
+      line, so a wound between 50% and 60% still classifies as not healed by 180 days.</p>
     </details>
-  </div>
-
-  <div class="card" style="padding:12px">
-    <a class="dl" href="DFWC_HP_ClinicalCalculator_v5.xlsx" download>
-      Download the Excel version
-      <span>Same model, with the coefficients, full performance table and a validation sheet</span>
-    </a>
   </div>
 </main>
 
 <footer>
   <p><strong>Stonko DP, Hicks CW, Sherman RL, Abularrage CJ.</strong>
-  Data visualization and machine-learning prediction of wound healing in diabetic foot
-  ulcers: a single-center analysis using the WIfI classification system.
+  Data visualization and prediction of diabetic foot ulcer healing: WIfI component grades
+  outperform the composite stage and more sophisticated models.
   Presented at the Eastern Vascular Society 40th Annual Meeting, Washington DC,
   September 2026.</p>
-  <p>Approved by the Johns Hopkins Medicine IRB, IR00076176. Developed and internally
-  validated at a single center; not externally validated. This tool is provided for
+  <p>Approved by the Johns Hopkins Medicine IRB, IR00076176. This tool is provided for
   research and educational purposes and must not be used to guide the care of an
   individual patient. It runs entirely in your browser and sends nothing anywhere.</p>
 </footer>
 
 <script id="model-core">
 /* ---------------------------------------------------------------------------
-   Locked 7-feature model, DFWC_HP_finalModel_7f.mat (14 Jul 2026).
-   Verified against MATLAB on all 351 held-out wounds: max |diff| = 4.4e-16.
+   Four-variable model, v22 (26 Jul 2026).
+   Coefficients from calc_data_v22/coefficients.csv, Platt terms from
+   calc_data_v22/platt.csv. Verified against calc_data_v22/testset.csv on all
+   386 held-out wounds: max |p diff| = 1.1e-15, and the 0.5973 threshold
+   reproduces TP 185, FP 48, FN 78, TN 75.
+
+   Supersedes the 7-feature model of 14 Jul 2026, which was fitted to an
+   outcome with no time horizon and included a total-wound-count variable that
+   is not available at presentation.
    --------------------------------------------------------------------------- */
 var MODEL = {
-  intercept: 1.604872774991,
+  intercept: 1.715090565743,
   coef: {
-    woundNumber:  -0.565857146005,
-    totalWounds:   0.505325944016,
-    wScore:       -0.542333303148,
-    toe:           0.685499491660,
-    depth:         0.523755741515,
-    utStage:      -0.315045134352,
-    aspirin:       0.410967046600
+    wScore:          -0.481996105334,
+    utStage:         -0.362137483812,
+    toe:              0.791939016938,
+    noncompressible: -0.546142208164
   },
-  plattB0: 0.116206301634,
-  plattB1: 0.899691834507,
-  threshold: 0.71
+  plattB0: 0.034126954151,
+  plattB1: 0.917519915490,
+  threshold: 0.597301552387
 };
 
 function computeProbability(v){
   var c = MODEL.coef;
   var L = MODEL.intercept
-        + c.woundNumber * v.woundNumber
-        + c.totalWounds * v.totalWounds
-        + c.wScore      * v.wScore
-        + c.toe         * v.toe
-        + c.depth       * v.depth
-        + c.utStage     * v.utStage
-        + c.aspirin     * v.aspirin;
+        + c.wScore          * v.wScore
+        + c.utStage         * v.utStage
+        + c.toe             * v.toe
+        + c.noncompressible * v.noncompressible;
   var z = MODEL.plattB0 + MODEL.plattB1 * L;
   return 1 / (1 + Math.exp(-z));
 }
@@ -306,14 +300,20 @@ if (typeof module !== "undefined" && module.exports) {
 (function(){
   "use strict";
 
+  // Every input is a button group. The old page took three free-text numbers,
+  // one of which (total wounds) is not knowable at a first visit; there is
+  // nothing here now that a clinician cannot read off the wound in front of
+  // them.
   var SEGS = {
-    "seg-w":   {values:[0,1,2,3],       labels:["0","1","2","3"],   key:"wScore"},
-    "seg-toe": {values:[1,0],           labels:["Yes","No"],        key:"toe"},
-    "seg-ut":  {values:[0,1,2,3,4],     labels:["0","1","2","3","4"], key:"utStage"},
-    "seg-asa": {values:[1,0],           labels:["Yes","No"],        key:"aspirin"}
+    "seg-w":   {values:[0,1,2,3], labels:["0","1","2","3"],
+                subs:["none","mild","moderate","severe"], key:"wScore"},
+    "seg-ut":  {values:[0,1,2,3], labels:["A","B","C","D"],
+                subs:["clean","infected","ischemic","both"], key:"utStage"},
+    "seg-toe": {values:[1,0], labels:["Yes","No"], subs:[null,null], key:"toe"},
+    "seg-nc":  {values:[1,0], labels:["Yes","No"], subs:[null,null],
+                key:"noncompressible"}
   };
-  var state = {woundNumber:null, totalWounds:null, wScore:null,
-               toe:null, depth:null, utStage:null, aspirin:null};
+  var state = {wScore:null, utStage:null, toe:null, noncompressible:null};
 
   Object.keys(SEGS).forEach(function(id){
     var cfg = SEGS[id], host = document.getElementById(id);
@@ -321,6 +321,11 @@ if (typeof module !== "undefined" && module.exports) {
       var b = document.createElement("button");
       b.type = "button";
       b.textContent = cfg.labels[i];
+      if (cfg.subs && cfg.subs[i]) {
+        var s = document.createElement("small");
+        s.textContent = cfg.subs[i];
+        b.appendChild(s);
+      }
       b.setAttribute("aria-pressed", "false");
       b.addEventListener("click", function(){
         state[cfg.key] = val;
@@ -333,76 +338,31 @@ if (typeof module !== "undefined" && module.exports) {
     });
   });
 
-  var NUMS = [
-    {id:"wnum",  key:"woundNumber", min:1, max:25, integer:true},
-    {id:"wtot",  key:"totalWounds", min:1, max:25, integer:true},
-    {id:"depth", key:"depth",       min:0, max:10, integer:false}
-  ];
-  NUMS.forEach(function(f){
-    var el = document.getElementById(f.id);
-    el.addEventListener("input", function(){
-      var raw = el.value.trim();
-      if (raw === "") { state[f.key] = null; el.classList.remove("bad"); render(); return; }
-      var n = Number(raw);
-      var ok = isFinite(n) && n >= f.min && n <= f.max && (!f.integer || n === Math.round(n));
-      el.classList.toggle("bad", !ok);
-      state[f.key] = ok ? n : null;
-      render();
-    });
-  });
-
   var elResult = document.getElementById("result"),
       elPct    = document.getElementById("pct"),
       elLabel  = document.getElementById("plabel"),
       elCls    = document.getElementById("cls"),
-      elFill   = document.getElementById("fill"),
-      elWarn   = document.getElementById("warn");
+      elFill   = document.getElementById("fill");
 
   function ready(){
     return Object.keys(state).every(function(k){ return state[k] !== null; });
   }
 
-  function warnings(){
-    var w = [];
-    if (state.woundNumber !== null && state.totalWounds !== null &&
-        state.woundNumber > state.totalWounds) {
-      w.push("Wound number (" + state.woundNumber + ") is larger than this patient's total wounds (" +
-             state.totalWounds + ").");
-    }
-    if (state.depth !== null && state.depth > 3) {
-      w.push("A depth of " + state.depth + " cm is beyond 99% of the development cohort.");
-    }
-    if ((state.woundNumber !== null && state.woundNumber > 13) ||
-        (state.totalWounds !== null && state.totalWounds > 21)) {
-      w.push("Wound counts this high are rare in the development cohort.");
-    }
-    return w;
-  }
-
   function render(){
-    var w = warnings();
-    if (w.length) {
-      elWarn.textContent = w.join(" ") + " Treat the estimate with caution.";
-      elWarn.style.display = "block";
-    } else {
-      elWarn.style.display = "none";
-    }
-
     if (!ready()) {
       elResult.className = "idle";
-      elPct.textContent = "Fill in all seven fields below";
+      elPct.textContent = "Answer all four questions below";
       elLabel.textContent = "";
       elCls.textContent = "";
       elFill.style.width = "0";
       return;
     }
-
     var p = computeProbability(state);
     var heals = p >= MODEL.threshold;
     elResult.className = heals ? "heal" : "nheal";
     elPct.textContent = (p * 100).toFixed(1) + "%";
-    elLabel.textContent = "predicted probability of healing without amputation or death";
-    elCls.textContent = heals ? "HEALED" : "NOT HEALED";
+    elLabel.textContent = "predicted probability of healing within 180 days";
+    elCls.textContent = heals ? "HEALED BY 180 DAYS" : "NOT HEALED BY 180 DAYS";
     elFill.style.width = (p * 100).toFixed(1) + "%";
   }
 
