@@ -8,20 +8,6 @@ within 180 days.
 > **Not for clinical decision-making.** This tool is provided for research and educational
 > purposes and must not be used to guide the care of an individual patient.
 
-## What changed in August 2026
-
-This page previously served a seven-feature model. It has been withdrawn, for two
-independent reasons:
-
-1. It asked for **total wounds this patient has**, which is not knowable at a first visit
-   and moved the estimate by as much as 17 percentage points on its own.
-2. It was fitted to a healing outcome with **no time horizon**, so a wound recorded as
-   open at last contact counted as a failure whether it had been followed for three years
-   or three weeks. It also advertised a margin over WIfI stage of 0.121, which does not
-   survive anchoring the outcome; the true margin is 0.059.
-
-Neither the old estimates nor the old cut-point carry over.
-
 ## The model
 
 A four-variable logistic regression with a Platt recalibration, developed on 1,141
@@ -30,8 +16,7 @@ Wound Center between 2012 and 2025, split 755/386 by patient. A further 114 woun
 excluded for having neither a definitive outcome nor 180 days of observation. Reported
 per TRIPOD+AI.
 
-Predictors, with odds ratios on the native scale (per one grade or stage; presence vs.
-absence for the two binary predictors):
+Every input is available at the first visit:
 
 | Predictor | Odds ratio (95% CI) | p |
 |---|---|---|
@@ -48,6 +33,13 @@ verified by cross-tabulating it against the raw string across all 1,255 wounds: 
 Noncompressible tibial vessels are asked for and the ankle-brachial index is not, because
 the calcification phenotype carries the signal and the index value does not.
 
+The equation, at full precision:
+
+    L = 1.715091 - 0.481996*W - 0.362137*UTstage + 0.791939*Toe - 0.546142*NC
+    p = 1 / (1 + exp(-(0.034127 + 0.917520*L)))
+
+W and UTstage run 0 to 3; Toe and NC are 1 or 0.
+
 ## The outcome
 
 Healing **within 180 days** of presentation. Every wound in the analysis was observed for
@@ -57,9 +49,11 @@ Of the 403 wounds not healed by 180 days, 271 healed later, 48 came to major amp
 43 patients died before the wound resolved, and 41 were still open. "Not healed" here
 therefore means not healed yet, not never healed.
 
-Anchoring the outcome is what makes the ischemia gradient visible: under the registry's
-untimed definition the ischemia grade showed nothing (chi-squared 1.64, p=0.65); at 180
-days it runs 70.3% healing at I-0 to 41.1% at I-2 (chi-squared 38.36, p<0.0001).
+The time horizon is what makes the ischemia gradient visible. Counting a wound as a
+failure because it was open at last contact, with no regard for how long it had been
+followed, hides it entirely: on that definition the ischemia grade shows nothing
+(chi-squared 1.64, p=0.65). Anchored at 180 days it runs 70.3% healing at I-0 to 41.1% at
+I-2 (chi-squared 38.36, p<0.0001).
 
 ## Performance
 
@@ -89,11 +83,6 @@ Developed and internally validated at a single centre. Not externally validated.
 The web implementation was verified against the source pipeline on all 386 held-out
 wounds: maximum absolute difference 3.4e-13, and the cut-point reproduces the published
 confusion matrix exactly (TP 185, FP 48, FN 78, TN 75).
-
-`DFWC_HP_ClinicalCalculator_v6.xlsx` is still sitting in this folder and implements the
-RETIRED seven-feature model. Delete it before the next deploy and rebuild the spreadsheet
-on the four-variable model if a spreadsheet version is still wanted. The download link to
-it has already been taken off `index.html`.
 
 ## Citation
 
