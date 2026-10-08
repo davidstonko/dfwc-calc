@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>DFWC Wound Healing Prediction Calculator</title>
-<meta name="description" content="Research calculator estimating the probability that a diabetic foot ulcer heals within 180 days, from a four-variable logistic regression developed at the Johns Hopkins Diabetic Foot &amp; Wound Center.">
+<meta name="description" content="Research calculator estimating the probability that a diabetic foot ulcer heals within 180 days, from a five-variable logistic regression developed at the Johns Hopkins Diabetic Foot &amp; Wound Center.">
 <style>
   :root{
     --navy:#243772; --ink:#1B2A4A; --band:#1B2A4A; --gold:#FFD96E;
@@ -116,14 +116,14 @@
   <div id="sticky">
     <div id="result" class="idle" aria-live="polite">
       <div class="rrow">
-        <div id="pct">Answer all four questions below</div>
+        <div id="pct">Answer all five questions below</div>
         <div class="rmeta">
           <div id="plabel"></div>
           <span id="cls"></span>
         </div>
       </div>
-      <div id="bar"><div id="fill"></div><div id="cut" title="60% cut-point"></div></div>
-      <div id="barlab">line marks the 60% cut-point</div>
+      <div id="bar"><div id="fill"></div><div id="cut" title="63% cut-point"></div></div>
+      <div id="barlab">line marks the 63% cut-point</div>
     </div>
   </div>
 
@@ -137,10 +137,17 @@
     </div>
 
     <div class="field">
-      <label id="lab-ut">University of Texas stage</label>
-      <div class="hint">The <strong>letter</strong> of the UT score, which grades infection
-        and ischemia. Not the number, which grades depth.</div>
-      <div class="seg" id="seg-ut" role="group" aria-labelledby="lab-ut"></div>
+      <label id="lab-i">WIfI ischemia grade (I)</label>
+      <div class="hint">0 = ABI 0.80 or more, 1 = 0.60 to 0.79, 2 = 0.40 to 0.59, 3 = under 0.40
+        (or by toe pressure and TcPO2 when the ankle index cannot be used).</div>
+      <div class="seg" id="seg-i" role="group" aria-labelledby="lab-i"></div>
+    </div>
+
+    <div class="field">
+      <label id="lab-fi">WIfI foot infection grade (fI)</label>
+      <div class="hint">0 = none, 1 = mild (local, skin only), 2 = moderate (deeper or wider), 3 = severe
+        (systemic response).</div>
+      <div class="seg" id="seg-fi" role="group" aria-labelledby="lab-fi"></div>
     </div>
 
     <div class="field">
@@ -161,17 +168,22 @@
     <h2>About this model</h2>
 
     <details>
-      <summary>What the four predictors do</summary>
+      <summary>What the five predictors do</summary>
       <table>
         <tr><th>Predictor</th><th>Odds ratio</th><th>p</th></tr>
-        <tr><td>Toe location (vs. other)</td><td>2.21 (1.53&ndash;3.20)</td><td>&lt;0.0001</td></tr>
-        <tr><td>UT stage (per stage)</td><td>0.70 (0.59&ndash;0.82)</td><td>&lt;0.0001</td></tr>
-        <tr><td>WIfI wound grade (per grade)</td><td>0.62 (0.47&ndash;0.80)</td><td>0.0003</td></tr>
-        <tr><td>Noncompressible tibials (vs. not)</td><td>0.58 (0.42&ndash;0.80)</td><td>0.0010</td></tr>
+        <tr><td>Toe location (vs. other)</td><td>2.18 (1.50&ndash;3.18)</td><td>&lt;0.0001</td></tr>
+        <tr><td>WIfI foot infection grade (per grade)</td><td>1.05 (0.89&ndash;1.25)</td><td>0.55</td></tr>
+        <tr><td>WIfI ischemia grade (per grade)</td><td>0.75 (0.64&ndash;0.87)</td><td>0.0002</td></tr>
+        <tr><td>WIfI wound grade (per grade)</td><td>0.58 (0.44&ndash;0.75)</td><td>&lt;0.0001</td></tr>
+        <tr><td>Noncompressible tibials (vs. not)</td><td>0.53 (0.39&ndash;0.73)</td><td>0.0001</td></tr>
       </table>
-      <p>Odds ratios are on the native scale: per one grade or stage, and presence vs.
-      absence for toe location and noncompressible tibial vessels. An odds ratio above 1
-      favours healing.</p>
+      <p>Odds ratios are on the native scale: per one grade, and presence vs. absence for
+      toe location and noncompressible tibial vessels. An odds ratio above 1 favours
+      healing. The model is the three WIfI component grades, entered separately because
+      they predict healing better than the composite stage they are combined into, plus
+      the two variables that stability selection added. The foot infection grade carries
+      no independent weight once the others are in the model; it is kept so that the
+      model uses all three grades a clinician has already assigned.</p>
       <p>Toe wounds heal better than wounds elsewhere on the foot, and that is the largest
       single effect here. Noncompressible tibial vessels predict healing where the
       ankle-brachial index does not, which is why the calcification phenotype is asked for
@@ -183,21 +195,22 @@
       <p>Developed on 1,141 diabetic foot ulcers from 387 patients treated between 2012 and
       2025, split 755/386 by patient. A further 114 wounds were excluded because they had
       neither a definitive outcome nor 180 days of observation.</p>
-      <p>On the 386 held-out wounds: <strong>AUC 0.684</strong> (95% CI
-      0.625&ndash;0.741). WIfI stage alone reaches 0.625, so the margin is
-      <strong>+0.059</strong> (95% CI 0.012&ndash;0.109, p=0.008). At the 60% cut-point,
-      sensitivity 70% and specificity 61%, positive predictive value 79% and negative
-      predictive value 49%. Calibration slope 0.859, Brier score 0.199.</p>
+      <p>On the 386 held-out wounds: <strong>AUC 0.700</strong> (95% CI
+      0.643&ndash;0.754). WIfI stage alone reaches 0.625, so the margin is
+      <strong>+0.075</strong> (95% CI 0.026&ndash;0.124, p=0.001). At the 63% cut-point,
+      sensitivity 62% and specificity 72%, positive predictive value 83% and negative
+      predictive value 47%. Calibration slope 0.99, Brier score 0.196.</p>
       <p><strong>The honest caveat.</strong> Entering the three WIfI component grades
-      directly, with no model at all, reaches 0.682. This four-variable model reaches 0.684.
-      Across fifteen approaches tested, including tuned gradient boosting, random forests
-      and an elastic net over 77 candidate variables, nothing significantly beat the three
-      component grades. Use this as a convenience, not as evidence that modelling adds
-      something.</p>
-      <p><strong>Calibration is imperfect.</strong> The Hosmer&ndash;Lemeshow test is 22.29,
-      p=0.004, and the calibration slope is 0.859, so the extremes are pulled toward the
-      middle: high probabilities here are somewhat optimistic and low ones somewhat
-      pessimistic. Read the number as a rank, not as a precise risk.</p>
+      directly, with no model at all, reaches 0.682. This five-variable model reaches 0.700,
+      and the difference (+0.018, 95% CI &minus;0.015 to 0.052) is not statistically
+      significant. Across 23 approaches tested, including tuned gradient boosting, random
+      forests, support vector machines and a neural network over 77 candidate variables,
+      nothing significantly beat the three component grades. Use this as a convenience,
+      not as evidence that modelling adds much.</p>
+      <p><strong>Calibration.</strong> Calibration slope 0.99, Hosmer&ndash;Lemeshow 12.6
+      on 8 degrees of freedom, p=0.13, and no quintile of predicted risk is more than 8
+      points from the observed rate. Still, read the number as a rank more than as a
+      precise risk: the model was developed and tested at one center.</p>
       <p>Developed and internally validated at one center. Not externally validated.</p>
     </details>
 
@@ -222,12 +235,12 @@
       <summary>The equation</summary>
       <p>A logistic regression with a Platt recalibration learned from out-of-fold
       predictions on the training set only:</p>
-      <p><code>L = 1.715091 &minus; 0.481996&middot;W &minus; 0.362137&middot;UTstage
-      + 0.791939&middot;Toe &minus; 0.546142&middot;NC</code></p>
-      <p><code>p = 1 / (1 + exp(-(0.034127 + 0.917520 &times; L)))</code></p>
-      <p>W and UTstage run 0 to 3; Toe and NC are 1 or 0. The 60% cut-point is the
-      Youden-optimal operating point on the held-out set (0.5973 exactly), not a 50/50
-      line, so a wound between 50% and 60% still classifies as not healed by 180 days.</p>
+      <p><code>L = 1.555616 &minus; 0.553123&middot;W &minus; 0.293273&middot;I
+      + 0.051720&middot;fI + 0.780178&middot;Toe &minus; 0.633521&middot;NC</code></p>
+      <p><code>p = 1 / (1 + exp(-(0.046374 + 0.899547 &times; L)))</code></p>
+      <p>W, I and fI run 0 to 3; Toe and NC are 1 or 0. The 63% cut-point is the
+      Youden-optimal operating point on the held-out set (0.6347), not a 50/50
+      line, so a wound between 50% and 63% still classifies as not healed by 180 days.</p>
     </details>
   </div>
 </main>
@@ -245,34 +258,38 @@
 
 <script id="model-core">
 /* ---------------------------------------------------------------------------
-   Four-variable model, v22 (26 Jul 2026).
-   Coefficients from calc_data_v22/coefficients.csv, Platt terms from
-   calc_data_v22/platt.csv. Verified against calc_data_v22/testset.csv on all
-   386 held-out wounds: max |p diff| = 1.1e-15, and the 0.5973 threshold
-   reproduces TP 185, FP 48, FN 78, TN 75.
+   Five-variable model, v35 (8 Oct 2026): the three WIfI component grades,
+   toe location and noncompressible tibial vessels.
+   Coefficients from fig_data_v35/final_model_ors.csv (raw_coef) and
+   fig_data_v35/calc_params.csv, written by DFWC_HP_v35_finalModel.m.
+   Verified against fig_data_v35/calc_testset.csv on all 386 held-out wounds:
+   max |p diff| = 1.6e-15, and the 0.6347 threshold reproduces
+   TP 164, FP 34, FN 99, TN 89.
 
-   Supersedes the 7-feature model of 14 Jul 2026, which was fitted to an
-   outcome with no time horizon and included a total-wound-count variable that
-   is not available at presentation.
+   Supersedes the four-variable model of 26 Jul 2026 (W, University of Texas
+   stage, toe, noncompressible), which the University of Texas stage made a
+   second encoding of the ischemia and infection grades.
    --------------------------------------------------------------------------- */
 var MODEL = {
-  intercept: 1.715090565743,
+  intercept: 1.55561634746865,
   coef: {
-    wScore:          -0.481996105334,
-    utStage:         -0.362137483812,
-    toe:              0.791939016938,
-    noncompressible: -0.546142208164
+    wScore:          -0.553122859480143,
+    iScore:          -0.293272876416871,
+    fiScore:          0.0517201051968403,
+    toe:              0.780177582867438,
+    noncompressible: -0.633521294851839
   },
-  plattB0: 0.034126954151,
-  plattB1: 0.917519915490,
-  threshold: 0.597301552387
+  plattB0: 0.0463737521068527,
+  plattB1: 0.899546719410857,
+  threshold: 0.634706687386
 };
 
 function computeProbability(v){
   var c = MODEL.coef;
   var L = MODEL.intercept
         + c.wScore          * v.wScore
-        + c.utStage         * v.utStage
+        + c.iScore          * v.iScore
+        + c.fiScore         * v.fiScore
         + c.toe             * v.toe
         + c.noncompressible * v.noncompressible;
   var z = MODEL.plattB0 + MODEL.plattB1 * L;
@@ -295,13 +312,15 @@ if (typeof module !== "undefined" && module.exports) {
   var SEGS = {
     "seg-w":   {values:[0,1,2,3], labels:["0","1","2","3"],
                 subs:["none","mild","moderate","severe"], key:"wScore"},
-    "seg-ut":  {values:[0,1,2,3], labels:["A","B","C","D"],
-                subs:["clean","infected","ischemic","both"], key:"utStage"},
+    "seg-i":   {values:[0,1,2,3], labels:["0","1","2","3"],
+                subs:["none","mild","moderate","severe"], key:"iScore"},
+    "seg-fi":  {values:[0,1,2,3], labels:["0","1","2","3"],
+                subs:["none","mild","moderate","severe"], key:"fiScore"},
     "seg-toe": {values:[1,0], labels:["Yes","No"], subs:[null,null], key:"toe"},
     "seg-nc":  {values:[1,0], labels:["Yes","No"], subs:[null,null],
                 key:"noncompressible"}
   };
-  var state = {wScore:null, utStage:null, toe:null, noncompressible:null};
+  var state = {wScore:null, iScore:null, fiScore:null, toe:null, noncompressible:null};
 
   Object.keys(SEGS).forEach(function(id){
     var cfg = SEGS[id], host = document.getElementById(id);
@@ -339,7 +358,7 @@ if (typeof module !== "undefined" && module.exports) {
   function render(){
     if (!ready()) {
       elResult.className = "idle";
-      elPct.textContent = "Answer all four questions below";
+      elPct.textContent = "Answer all five questions below";
       elLabel.textContent = "";
       elCls.textContent = "";
       elFill.style.width = "0";
